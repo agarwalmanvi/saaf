@@ -52,10 +52,15 @@ class Structure:
 	def addInitialVal(self, argument, value):
 		self.initial_values[argument] = value
 
-	def addVotesOnRel(self,arg1,arg,pro,con):
+	def addVotesOnRel(self,arg1,arg2,pro,con):
 		self.votes_relations[(arg1,arg2)] = (pro,con)
 
 	#TODO include addProVoteOnRel and addConVoteOnRel
+	
+	def addVotesOnSupportRel(self, arg1, arg2, pro, con):
+		self.votes_support_relations[(arg1,arg2)] = (pro,con)
+		
+	#TODO include addProVoteOnSupportRel and addConVoteOnSupportRel
 
 	def randomInit(self):
 		self.initial_values = [np.random.uniform(0, 1) for i in range(self.var)]
@@ -242,7 +247,7 @@ def doBsaf(s, iters=0):
 				support_set = s.support_relations[:j]
 				supporting_pos = np.where(support_set)
 				temp3 = np.take(temp1,supporting_pos)
-				current_iter[j] = tau*(1 + (np.prod(temp2)*np.prod(temp3)) + np.prod(temp3))
+				current_iter[j] = tau*(1 + (np.prod(temp2)*np.prod(temp3)) - np.prod(temp3))
 
 			save_iterations[i,:] = current_iter
 			diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
@@ -274,7 +279,7 @@ def doBsaf(s, iters=0):
 				support_set = s.support_relations[:j]
 				supporting_pos = np.where(support_set)
 				temp3 = np.take(temp1,supporting_pos)
-				current_iter[j] = tau*(1 + (np.prod(temp2)*np.prod(temp3)) + np.prod(temp3))
+				current_iter[j] = tau*(1 + (np.prod(temp2)*np.prod(temp3)) - np.prod(temp3))
 			save_iterations = np.concatenate((save_iterations,np.zeros((1,len(s.initial_values)))), axis=0)
 			save_iterations[i,:] = current_iter
 			diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
