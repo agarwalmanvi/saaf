@@ -59,6 +59,7 @@ s.addVotesOnSupportRel(4,5,30,23)
 Once you make a Structure, you can pass it to different functions to see what the valuation of arguments is like. 
 
 Currently, this implementation only supports printing if the solution exists, and if it does and it does in most cases, as far as our simulations suggest), printing the valuation of the arguments that the iterative formula arrives at. This does not alter the Structure itself, so you can reuse it.
+```
 # Framework                                                   # Features
 # Social Abstract Argumentation Framework                     # Votes on arguments, attack relations
 doSaf(s)
