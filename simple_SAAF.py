@@ -5,9 +5,9 @@ import copy
 
 class simple_SAAF():
     # epsilon thats used for vote aggregation
-    epsilon = 0.01
+    epsilon = 0.1
      # runs the iterative algorithm for given number of iterations
-    iterations = 1000
+    iterations = 10000
     # number of arguments and the density of the frame 
     var = 5
     density = 0.8
@@ -15,33 +15,6 @@ class simple_SAAF():
     # take care of zeros 
     def votes_evaluation(self, pro, con):
         return pro/(pro + con + self.epsilon)
-
-    def run_for_iterations(self, initial_values, attack_relations, votes):  
-        # saves in every row the value after each iteration step
-        save_iterations = np.zeros(shape = (self.iterations,self.var))
-        # zeroth setp contains the initial values
-        save_iterations [0,:] = initial_values
-        for i in range(1,self.iterations):
-            current_iter = copy.deepcopy(save_iterations[i-1,:])
-            for j in range(self.var):     
-                # the iteration rule
-                tau = self.votes_evaluation(votes[j][0],votes[j][1])
-                attacking_set = attack_relations[:,j]
-                attacking_pos = np.where(attacking_set)
-                temp1 = np.subtract(np.ones(self.var),current_iter)
-                temp2 = np.take(temp1,attacking_pos)
-                current_iter[j] = tau*np.prod(temp2)
-            save_iterations[i,:] = current_iter
-            # to store the total absolute change in value after every iteration
-            diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
-            diff2 = np.sum(np.absolute(diff1))
-            if (i%10 == 0):
-                print("Iteration number:  ", i, " Difference is", diff2)
-            #print("The argument values at iter ", i ,"are : ", save_iterations[i,:])
-
-        #print("The argument values at iter ", i ,"are : ", save_iterations[self.iterations-1,:])
-        print("-------------------------------------")
-    
     
     def run_till_convergence(self, initial_values, attack_relations, votes):
         
@@ -65,7 +38,7 @@ class simple_SAAF():
             # to store the total absolute change in value after every iteration
             diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
             # the convergence condition, delta for each variable should be less than 10^-10
-            condition = (np.absolute(diff1) < 0.00000001).prod()
+            condition = (np.absolute(diff1) < 0.0000001).prod()
             diff2 = np.sum(np.absolute(diff1))
             #print("Iteration number:  ", i, " Difference is", diff2)
             #print("Fixed point obtained", save_iterations[i,:])
@@ -112,36 +85,28 @@ class simple_SAAF():
         row3 = [0,1,0,1,0]
         row4 = [0,0,1,0,1]
         row5 = [1,0,0,1,0]
-
-        # # standard labelling 1-3-5-2-4 (cyclic)
-        # row1 = [0,0,1,1,0]
-        # row2 = [0,0,1,0,1]
-        # row3 = [1,0,0,0,1]
-        # row4 = [1,1,0,0,0]
-        # row5 = [0,1,1,0,0]
-
+        attack_rel = np.array([row1, row2, row3, row4, row5])
+        v = [1,0]
+        votes = np.array([v,v,v,v,v])
 
         # # standard labelling 1-2-3-4 (cyclic)
         # row1 = [0,1,0,1]
         # row2 = [1,0,1,0]
         # row3 = [0,1,0,1]
         # row4 = [1,0,1,0]
-        
-        # # labelling 1-3-2-4 
-        # row1 = [0,0,1,1]
-        # row2 = [0,0,1,1]
-        # row3 = [1,1,0,0]
-        # row4 = [1,1,0,0]
+        # attack_rel = np.array([row1, row2, row3, row4])
+        # v = [1,0]
+        # v1 = [2,0]
+        # votes = np.array([v1,v,v,v])
 
-        # # labelling 1-2-4-3
-        # row1 = [0,1,1,0]
-        # row2 = [1,0,0,1]
-        # row3 = [1,0,0,1]
-        # row4 = [0,1,1,0]
+        # specify permutation of the labellings
+        permutation = [1,3,2,4,5]
 
-        attack_rel = np.array([row1, row2, row3, row4, row5])
-        v = [1,0]
-        votes = np.array([v,v,v,v,v])
+        # Specify the permutation 
+        permutation = [x - 1 for x in permutation]        
+        standard = range(0,len(permutation),1)
+        attack_rel[standard,:] = attack_rel[permutation,:]
+        attack_rel[:, standard] = attack_rel[:,permutation]
 
         ini_val = np.array([None]*50)
         conv = np.array([None]*50)
@@ -149,8 +114,9 @@ class simple_SAAF():
         for i in range(50):
             print(i)
             found = False
-            initial_values = np.random.uniform(0,1,5)
-            #initial_values = np.array([ 0.4366013 ,  0.57195905,  0.16146849 , 0.8727271])
+            # initial_values = np.random.uniform(0,1,4)
+            initial_values = np.array([ 0.1386 ,  0.78308,  0.08145 , 0.58693, 0.2971])
+
             converged_values = self.run_till_convergence(initial_values, attack_rel, votes)
             for k in range(j):
                 if (np.absolute(np.subtract(conv[k],converged_values))<0.000001).prod():
@@ -170,6 +136,9 @@ class simple_SAAF():
 # [ 0.01125178  0.88874822  0.01125178  0.88874822] - model 2 
 # [ 0.88874822  0.01125178  0.88874822  0.01125178] - model 3 
 
+
 if __name__ == '__main__':
     # simple_SAAF().main()
     simple_SAAF().test()
+
+    
