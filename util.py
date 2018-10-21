@@ -39,9 +39,9 @@ def jacobian_inverse_5_cycle(arg_val, votes, permutation):
     jacobian = []
     jacobian.append([0, votes[0][0]*(arg_val[4]-1), 0, 0, votes[0][0]*(arg_val[1]-1)])
     jacobian.append([votes[1][0]*(arg_val[2]-1), 0, votes[1][0]*(arg_val[0]-1),0, 0])
-    jacobian.append([0, votes[2][0]*(arg_val[3]-1), 0, votes[2][0]*(arg_val[1]-1)], 0)
+    jacobian.append([0, votes[2][0]*(arg_val[3]-1), 0, votes[2][0]*(arg_val[1]-1), 0])
     jacobian.append([0, 0 , votes[3][0]*(arg_val[4]-1), 0, votes[3][0]*(arg_val[2]-1)])
-    jacobian.append([votes[4][0]*(arg_val[3]-1), 0, 0, votes[4][0]*(arg_val[0]-1), 0 ])
+    jacobian.append([votes[4][0]*(arg_val[3]-1), 0, 0, votes[4][0]*(arg_val[0]-1), 0])
     
     jacobian = np.array(jacobian)
 
@@ -84,8 +84,8 @@ def write_to_file(filename, labelling, converged_values):
     file = open(filename, 'a')
     file.write("Labelling is  " + str(labelling) + "\n")
     for i in converged_values:
-        file.write("Initialization : " + str(i[0]) + "\n")
-        file.write("The fixed point : " + str(i[1]) + "\n")
+        file.write("The fixed point : " + str(i[0]) + "\n")
+        file.write("Initialization : " + str(i[1]) + "\n")
         file.write("Frequency : " + str(i[2]) + "\n")
     file.close()
 
