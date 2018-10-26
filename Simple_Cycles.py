@@ -11,14 +11,14 @@ class Simple_Cycles():
     # runs the iterative algorithm for this of iterations
     iterations = 2000
     # the threshold for the convergence limit = 10^-7
-    convergence_threshold = 0.00000001
+    convergence_threshold = 0.0000001
             
     def votes_evaluation(self, pro, con):
         return pro/(pro + con + self.epsilon)
         
     def test_with_uniform_initialization(self, attack_rel_init, votes_init):
         # the set of initial values we want to iterate to 
-        initial_values_set = util.get_initial_set(0.1, len(votes_init))
+        initial_values_set = util.get_initial_set(0.2, len(votes_init))
         # the original permutation
         original_permutation = np.array(range(len(votes_init)))
         # finds all the possible permutations. This is used as different labellings 
@@ -56,8 +56,8 @@ class Simple_Cycles():
                     iss_results = self.add_to_existing(iss_results, conv_ISS, initial_values_set[i])
 
             # Write the results for the labelling to the file
-            util.write_to_file('inr_results.txt', label, inr_results)   
-            util.write_to_file('iss_results.txt', label, iss_results)
+            util.write_to_file('5cycle_sym_0.01_inr_results.txt', label, inr_results)   
+            util.write_to_file('5cycle_sym_0.01_iss_results.txt', label, iss_results)
     
     def add_to_existing(self, result, fixed_point, initialization):
         # result is of form [unique fixed points, initilization, frequency]
@@ -138,22 +138,23 @@ class Simple_Cycles():
     
 if __name__ == '__main__':
     # standard labelling 1-2-3-4 (cyclic)
-    row1 = [0,1,0,1]
-    row2 = [1,0,1,0]
-    row3 = [0,1,0,1]
-    row4 = [1,0,1,0]
-    attack_rel = np.array([row1, row2, row3, row4])
-    v = [1,0]
-    votes = np.array([v,v,v,v])
-
-    # row1 = [0,1,0,0,1]
-    # row2 = [1,0,1,0,0]
-    # row3 = [0,1,0,1,0]
-    # row4 = [0,0,1,0,1]
-    # row5 = [1,0,0,1,0]
-    # attack_rel = np.array([row1, row2, row3, row4, row5])
+    # row1 = [0,1,0,1]
+    # row2 = [1,0,1,0]
+    # row3 = [0,1,0,1]
+    # row4 = [1,0,1,0]
+    # attack_rel = np.array([row1, row2, row3, row4])
     # v = [1,0]
-    # votes = np.array([v,v,v,v,v])
+    v2 = [2,0]
+    # votes = np.array([v2,v,v,v])
+
+    row1 = [0,1,0,0,1]
+    row2 = [1,0,1,0,0]
+    row3 = [0,1,0,1,0]
+    row4 = [0,0,1,0,1]
+    row5 = [1,0,0,1,0]
+    attack_rel = np.array([row1, row2, row3, row4, row5])
+    v = [1,0]
+    votes = np.array([v,v,v,v,v])
 
     Simple_Cycles().test_with_uniform_initialization(attack_rel, votes)
 
