@@ -1,16 +1,31 @@
 # Social Abstract Argumentation Frameworks
 
+## Installation
+
+### Requirements
+* Python 3
+* Packages numpy, random, copy
+
+
+
+## Exploring Multiple Solutions 
+
+The implementation for this part can be found in the folder "Simple Cycles".
+
+The test_with_uniform_initialization() method needs to be passed an argumentation graph, the votes for the arguments and the filenames 
+where the results are stores. The test cases we can can be found under "__main__".
+
+
+## Exploring Convergence 
+
+The implementation for this can be found in the folder "Tetsing Convergence".
+
 Python implementation of 4 social abstract argumentation frameworks
 * Social Abstract Argumentation Framework (SAF)
 * Extended Social Abstract Argumentation Framework (ESAF)
 * Bipolar Social Abstract Argumentation Framework (BSAF)
 * Extended Bipolar Social Abstract Argumentation Framework (EBSAF)
 
-## Installation
-
-### Requirements
-* Python 3
-* Packages numpy, random, copy
 
 ## Usage
 
