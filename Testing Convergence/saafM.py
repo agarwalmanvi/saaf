@@ -4,6 +4,8 @@ import copy
 import scipy
 from scipy import special
 import time
+import math
+from scipy.sparse import rand
 
 class Structure:
 	def __init__(self, var=10, density=0.8, support_density=0.6, epsilon=0.01):
@@ -17,6 +19,7 @@ class Structure:
 		self.support_density = support_density
 		self.support_relations = np.zeros((self.var,self.var)) # zero matrix with appropriate size
 		self.votes_support_relations = dict()
+
 		self.results = 0
 		self.time = 0
 		self.iterations_needed = 0
@@ -67,31 +70,42 @@ class Structure:
 		
 	def randomInit(self):
 		self.initial_values = [np.random.uniform(0, 1) for i in range(self.var)]
-		n_edges = 2 * scipy.special.comb(self.var, 2) * self.density
-		for i in range(self.var):
-			if (n_edges*8/10 < n_edges*12/10):
-				edges = np.random.randint(n_edges*8/10, n_edges*12/10)
+		n_edges = math.floor(2 * scipy.special.comb(self.var, 2) * self.density)
+		available_nodes = list(range(self.var))
+		for i in range(n_edges):
+#			print("Step: ", i)
+#			print("available nodes: ",available_nodes)
+			u = np.random.choice(available_nodes)
+			self.attack_relations[u][u] = 1
+			conn_nodes = self.attack_relations[u]
+#			print("All nodes: ", conn_nodes)
+			free_nodes = np.where(conn_nodes == 0)
+#			print("Free nodes: ", free_nodes)
+			if free_nodes[0].size == 0:
+				available_nodes.remove(u)
+				i += 1
 			else:
-				edges = n_edges*12/10 + 1
-			arr = range(1,self.var+1)
-			arr = np.random.permutation(arr)
-			pos_edges = arr[0:edges]
-			for j in range(self.var):
-				if j in pos_edges and i != j:
-					self.attack_relations [i][j] = 1
-		ns_edges = 2 * scipy.special.comb(self.var, 2) * self.support_density
-		for i in range(self.var):
-			if (ns_edges*8/10 < ns_edges*12/10):
-				edges = np.random.randint(ns_edges*8/10, ns_edges*12/10)
-			else: 
-				edges = ns_edges*12/10 + 1
-			arr = range(1,self.var+1)
-			arr = np.random.permutation(arr)
-			pos_edges = arr[0:edges]
-			for j in range(self.var):
-				if j in pos_edges and self.attack_relations[i][j] == 0:
-					self.support_relations [i][j] = 1
-			self.support_relations[i][i] = 0
+				v = np.random.choice(free_nodes[0])
+				self.attack_relations[u][v] = 1
+			self.attack_relations[u][u] = 0	
+		n_edges = math.floor(2 * scipy.special.comb(self.var, 2) * self.support_density)
+		available_nodes = list(range(self.var))
+		for i in range(n_edges):
+#			print("Step: ", i)
+#			print("available nodes: ",available_nodes)
+			u = np.random.choice(available_nodes)
+			self.support_relations[u][u] = 1
+			conn_nodes = self.support_relations[u]
+#			print("All nodes: ", conn_nodes)
+			free_nodes = np.where(conn_nodes == 0)
+#			print("Free nodes: ", free_nodes)
+			if free_nodes[0].size == 0:
+				available_nodes.remove(u)
+				i += 1
+			else:
+				v = np.random.choice(free_nodes[0])
+				self.support_relations[u][v] = 1
+			self.support_relations[u][u] = 0		
 		indices=list(np.transpose(np.nonzero(self.attack_relations)))
 		for i in range(len(indices)):
 			row, col = indices[i]
@@ -113,7 +127,9 @@ class Structure:
 		votes = self.votes_support_relations[(arg1, arg2)]
 		return votes[0]/(votes[0] + votes[1] + self.epsilon)
 
-def doSaf(s, iters=10000):
+def doSaf(s, iters=0):
+	if iters == 0:
+		iters = 10000
 	t0 = time.time()
 	save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
 	save_iterations [0,:] = s.initial_values
@@ -145,7 +161,9 @@ def doSaf(s, iters=10000):
 		s.time = 0
 		s.iterations_needed = 0
 	
-def doEsaf(s, iters=10000):
+def doEsaf(s, iters=0):
+	if iters == 0:
+		iters = 10000
 	t0 = time.time()
 	save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
 	save_iterations [0,:] = s.initial_values
@@ -181,7 +199,9 @@ def doEsaf(s, iters=10000):
 		s.iterations_needed = 0
 		s.results = str(0)
 
-def doBsaf(s, iters=10000):
+def doBsaf(s, iters=0):
+	if iters == 0:
+		iters = 10000
 	t0 = time.time()
 	save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
 	save_iterations [0,:] = s.initial_values
@@ -217,7 +237,9 @@ def doBsaf(s, iters=10000):
 		s.iterations_needed = 0
 		s.results = str(0)
 
-def doEbsaf(s, iters=10000):
+def doEbsaf(s, iters=0):
+	if iters == 0:
+		iters = 10000
 	t0 = time.time()
 	save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
 	save_iterations [0,:] = s.initial_values
