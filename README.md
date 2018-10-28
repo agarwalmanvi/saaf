@@ -4,7 +4,7 @@
 
 ### Requirements
 * Python 3
-* Packages numpy, random, copy
+* Packages numpy, random, copy, scipy, time
 
 
 
