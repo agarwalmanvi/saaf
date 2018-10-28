@@ -17,7 +17,6 @@ class Structure:
 		self.support_density = support_density
 		self.support_relations = np.zeros((self.var,self.var)) # zero matrix with appropriate size
 		self.votes_support_relations = dict()
-
 		self.results = 0
 		self.time = 0
 		self.iterations_needed = 0
@@ -114,9 +113,7 @@ class Structure:
 		votes = self.votes_support_relations[(arg1, arg2)]
 		return votes[0]/(votes[0] + votes[1] + self.epsilon)
 
-def doSaf(s, iters=0):
-	if iters == 0:
-		iters = 10000
+def doSaf(s, iters=10000):
 	t0 = time.time()
 	save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
 	save_iterations [0,:] = s.initial_values
@@ -148,9 +145,7 @@ def doSaf(s, iters=0):
 		s.time = 0
 		s.iterations_needed = 0
 	
-def doEsaf(s, iters=0):
-	if iters == 0:
-		iters = 10000
+def doEsaf(s, iters=10000):
 	t0 = time.time()
 	save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
 	save_iterations [0,:] = s.initial_values
@@ -186,9 +181,7 @@ def doEsaf(s, iters=0):
 		s.iterations_needed = 0
 		s.results = str(0)
 
-def doBsaf(s, iters=0):
-	if iters == 0:
-		iters = 10000
+def doBsaf(s, iters=10000):
 	t0 = time.time()
 	save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
 	save_iterations [0,:] = s.initial_values
@@ -224,9 +217,7 @@ def doBsaf(s, iters=0):
 		s.iterations_needed = 0
 		s.results = str(0)
 
-def doEbsaf(s, iters=0):
-	if iters == 0:
-		iters = 10000
+def doEbsaf(s, iters=10000):
 	t0 = time.time()
 	save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
 	save_iterations [0,:] = s.initial_values
