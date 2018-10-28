@@ -1,9 +1,12 @@
 import numpy as np
 import random
 import copy
+import scipy
+from scipy import special
+import time
 
 class Structure:
-	def __init__(self, var=10, density=0.8, support_density=0.8, epsilon=0.01):
+	def __init__(self, var=10, density=0.8, support_density=0.6, epsilon=0.01):
 		self.var = var
 		self.votes = list(zip([0]*self.var,[0]*self.var)) 
 		self.density = density
@@ -14,6 +17,11 @@ class Structure:
 		self.support_density = support_density
 		self.support_relations = np.zeros((self.var,self.var)) # zero matrix with appropriate size
 		self.votes_support_relations = dict()
+
+		self.results = 0
+		self.time = 0
+		self.iterations_needed = 0
+
 
 	def addArg(self):
 		self.var = self.var + 1
@@ -54,34 +62,35 @@ class Structure:
 
 	def addVotesOnRel(self,arg1,arg2,pro,con):
 		self.votes_relations[(arg1,arg2)] = (pro,con)
-
-	#TODO include addProVoteOnRel and addConVoteOnRel
 	
 	def addVotesOnSupportRel(self, arg1, arg2, pro, con):
 		self.votes_support_relations[(arg1,arg2)] = (pro,con)
 		
-	#TODO include addProVoteOnSupportRel and addConVoteOnSupportRel
-
 	def randomInit(self):
 		self.initial_values = [np.random.uniform(0, 1) for i in range(self.var)]
-		n_edges = self.var * self.density
+		n_edges = 2 * scipy.special.comb(self.var, 2) * self.density
 		for i in range(self.var):
-			edges = np.random.randint(n_edges*8/10, n_edges*12/10)
+			if (n_edges*8/10 < n_edges*12/10):
+				edges = np.random.randint(n_edges*8/10, n_edges*12/10)
+			else:
+				edges = n_edges*12/10 + 1
 			arr = range(1,self.var+1)
 			arr = np.random.permutation(arr)
 			pos_edges = arr[0:edges]
 			for j in range(self.var):
-				if j in pos_edges:
+				if j in pos_edges and i != j:
 					self.attack_relations [i][j] = 1
-			self.attack_relations[i][i] = 0
-		ns_edges = self.var * self.support_density
+		ns_edges = 2 * scipy.special.comb(self.var, 2) * self.support_density
 		for i in range(self.var):
-			edges = np.random.randint(ns_edges*8/10, ns_edges*12/10)
+			if (ns_edges*8/10 < ns_edges*12/10):
+				edges = np.random.randint(ns_edges*8/10, ns_edges*12/10)
+			else: 
+				edges = ns_edges*12/10 + 1
 			arr = range(1,self.var+1)
 			arr = np.random.permutation(arr)
 			pos_edges = arr[0:edges]
 			for j in range(self.var):
-				if j in pos_edges:
+				if j in pos_edges and self.attack_relations[i][j] == 0:
 					self.support_relations [i][j] = 1
 			self.support_relations[i][i] = 0
 		indices=list(np.transpose(np.nonzero(self.attack_relations)))
@@ -101,279 +110,166 @@ class Structure:
 		votes = self.votes_relations[(arg1, arg2)]
 		return votes[0]/(votes[0] + votes[1] + self.epsilon)
 
+	def votes_support_relations_eval(self, arg1, arg2):
+		votes = self.votes_support_relations[(arg1, arg2)]
+		return votes[0]/(votes[0] + votes[1] + self.epsilon)
+
 def doSaf(s, iters=0):
-	#Implements RunTillIterations
-	if iters != 0:
-		save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
-		save_iterations [0,:] = s.initial_values
-		i = 0
-		condition = 0
-		while (condition == 0 and i < iters+1):
-			current_iter = copy.deepcopy(save_iterations[i,:])
-			i +=  1
-			for j in range(len(s.initial_values)):        
-				tau = s.votes_eval(j)
-				attacking_set = s.attack_relations[:,j]
-				attacking_pos = np.where(attacking_set)
-				temp1 = np.subtract(np.ones(s.var),current_iter)
-				temp2 = np.take(temp1,attacking_pos)
-				current_iter[j] = tau*np.prod(temp2)
+	if iters == 0:
+		iters = 10000
+	t0 = time.time()
+	save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
+	save_iterations [0,:] = s.initial_values
+	i = 0
+	condition = 0
+	while (condition == 0 and i < iters+1):
+		current_iter = copy.deepcopy(save_iterations[i,:])
+		i +=  1
+		for j in range(len(s.initial_values)):        
+			tau = s.votes_eval(j)
+			attacking_set = s.attack_relations[:,j]
+			attacking_pos = np.where(attacking_set)
+			temp1 = np.subtract(np.ones(s.var),current_iter)
+			temp2 = np.take(temp1,attacking_pos)
+			current_iter[j] = tau*np.prod(temp2)
 
-			save_iterations[i,:] = current_iter
-			diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
-			condition = (diff1 < 0.0000000001).prod()
-			diff2 = np.sum(np.absolute(diff1))
-			print("Iteration number:  ", i, " Difference is ", diff2)
-
-		if condition == 1:
-			print("Converged!")
-			print("Number of iterations required was: ", i)
-		else:
-			print("Ran out of iterations!")
-			print("Try running until convergence, or increasing the number of iterations.")
-	  #Implements RunUntilConvergence
+		save_iterations[i,:] = current_iter
+		diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
+		condition = (np.absolute(diff1) < 0.0000000001).prod()
+		diff2 = np.sum(np.absolute(diff1))
+	if condition == 1:
+		s.time = time.time() - t0
+		s.iterations_needed = i
+		s.results = str(1)
+		print("Converged!")
 	else:
-		save_iterations = np.zeros(shape = (1,len(s.initial_values)))
-		save_iterations [0,:] = s.initial_values
-		i = 0
-		condition = 0
-		while (condition == 0 and i < 300):	#300 is maximum number of iterations
-			current_iter = copy.deepcopy(save_iterations[i,:])
-			i +=  1
-			for j in range(len(s.initial_values)):        
-				tau = s.votes_eval(j)
-				attacking_set = s.attack_relations[:,j]
-				attacking_pos = np.where(attacking_set)
-				temp1 = np.subtract(np.ones(s.var),current_iter)
-				temp2 = np.take(temp1,attacking_pos)
-				current_iter[j] = tau*np.prod(temp2)
-			save_iterations = np.concatenate((save_iterations,np.zeros((1,len(s.initial_values)))), axis=0)
-			save_iterations[i,:] = current_iter
-			diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
-			condition = (diff1 < 0.0000000001).prod()
-			diff2 = np.sum(np.absolute(diff1))
-			print("Iteration number:  ", i, " Difference is ", diff2)
-
-		if condition == 1:
-			print("Converged!")
-			print("Number of iterations required was: ", i)
-		else:
-			print("Ran out of iterations!")
-			print("Try increasing the number of iterations.")
-
+		print("Ran out of iterations!")
+		s.results = str(0)
+		s.time = 0
+		s.iterations_needed = 0
+	
 def doEsaf(s, iters=0):
-	#Implements RunTillIterations
-	if iters != 0:
-		save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
-		save_iterations [0,:] = s.initial_values
-		i = 0
-		condition = 0
-		while (condition == 0 and i < iters+1):
-			current_iter = copy.deepcopy(save_iterations[i,:])
-			i +=  1
-			for j in range(len(s.initial_values)):        
-				tau = s.votes_eval(j)
-				attacking_set = s.attack_relations[:,j]
-				attacking_pos = np.transpose(np.nonzero(attacking_set)).tolist()
-				attacking_pos = [item for sublist in attacking_pos for item in sublist]
-				temp1 = []
-				for attacker in attacking_pos:
-					if (attacker, j) in s.votes_relations:
-						tau_relations = s.votes_relations_eval(attacker, j)
-						temp1.append(1 - (tau_relations*current_iter[attacker]))
-				current_iter[j] = np.prod(temp1)*tau
-			save_iterations[i,:] = current_iter
-			diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
-			condition = (diff1 < 0.0000000001).prod()
-			diff2 = np.sum(np.absolute(diff1))
-			print("Iteration number:  ", i, " Difference is ", diff2)
+	if iters == 0:
+		iters = 10000
+	t0 = time.time()
+	save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
+	save_iterations [0,:] = s.initial_values
+	i = 0
+	condition = 0
+	while (condition == 0 and i < iters+1):
+		current_iter = copy.deepcopy(save_iterations[i,:])
+		i +=  1
+		for j in range(len(s.initial_values)):        
+			tau = s.votes_eval(j)
+			attacking_set = s.attack_relations[:,j]
+			attacking_pos = np.transpose(np.nonzero(attacking_set)).tolist()
+			attacking_pos = [item for sublist in attacking_pos for item in sublist]
+			temp1 = []
+			for attacker in attacking_pos:
+				if (attacker, j) in s.votes_relations:
+					tau_relations = s.votes_relations_eval(attacker, j)
+					temp1.append(1 - (tau_relations*current_iter[attacker]))
+			current_iter[j] = np.prod(temp1)*tau
+		save_iterations[i,:] = current_iter
+		diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
+		condition = (np.absolute(diff1) < 0.0000000001).prod()
+		diff2 = np.sum(np.absolute(diff1))
 
-		if condition == 1:
-			print("Converged!")
-			print("Number of iterations required was: ", i)
-		else:
-			print("Ran out of iterations!")
-			print("Try running until convergence, or increasing the number of iterations.")
-	  #Implements RunUntilConvergence
+	if condition == 1:
+		print("Converged!")
+		s.time = time.time() - t0
+		s.iterations_needed = i
+		s.results = str(1)
 	else:
-		save_iterations = np.zeros(shape = (1,len(s.initial_values)))
-		save_iterations [0,:] = s.initial_values
-		i = 0
-		condition = 0
-		while (condition == 0 and i < 300):	#300 is maximum number of iterations
-			current_iter = copy.deepcopy(save_iterations[i,:])
-			i +=  1
-			for j in range(len(s.initial_values)):        
-				tau = s.votes_eval(j)
-				attacking_set = s.attack_relations[:,j]
-				attacking_pos = np.transpose(np.nonzero(attacking_set)).tolist()
-				attacking_pos = [item for sublist in attacking_pos for item in sublist]
-				temp1 = []
-				for attacker in attacking_pos:
-					if (attacker, j) in s.votes_relations:
-						tau_relations = s.votes_relations_eval(attacker, j)
-						temp1.append(1 - (tau_relations*current_iter[attacker]))
-				current_iter[j] = np.prod(temp1)*tau
-			save_iterations = np.concatenate((save_iterations,np.zeros((1,len(s.initial_values)))), axis=0)
-			save_iterations[i,:] = current_iter
-			diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
-			condition = (diff1 < 0.0000000001).prod()
-			diff2 = np.sum(np.absolute(diff1))
-			print("Iteration number:  ", i, " Difference is ", diff2)
-
-		if condition == 1:
-			print("Converged!")
-			print("Number of iterations required was: ", i)
-		else:
-			print("Ran out of iterations!")
-			print("Try increasing the number of iterations.")
+		print("Ran out of iterations!")
+		s.time = 0
+		s.iterations_needed = 0
+		s.results = str(0)
 
 def doBsaf(s, iters=0):
-	#Implements RunTillIterations
-	if iters != 0:
-		save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
-		save_iterations [0,:] = s.initial_values
-		i = 0
-		condition = 0
-		while (condition == 0 and i < iters+1):
-			current_iter = copy.deepcopy(save_iterations[i,:])
-			i +=  1
-			for j in range(len(s.initial_values)):        
-				tau = s.votes_eval(j)
-				attacking_set = s.attack_relations[:,j]
-				attacking_pos = np.where(attacking_set)
-				temp1 = np.subtract(np.ones(s.var),current_iter)
-				temp2 = np.take(temp1,attacking_pos)
-				support_set = s.support_relations[:j]
-				supporting_pos = np.where(support_set)
-				temp3 = np.take(temp1,supporting_pos)
-				current_iter[j] = tau*(1 + (np.prod(temp2)*np.prod(temp3)) - np.prod(temp3))
+	if iters == 0:
+		iters = 10000
+	t0 = time.time()
+	save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
+	save_iterations [0,:] = s.initial_values
+	i = 0
+	condition = 0
+	while (condition == 0 and i < iters+1):
+		current_iter = copy.deepcopy(save_iterations[i,:])
+		i +=  1
+		for j in range(len(s.initial_values)):        
+			tau = s.votes_eval(j)
+			attacking_set = s.attack_relations[:,j]
+			attacking_pos = np.where(attacking_set)
+			temp1 = np.subtract(np.ones(s.var),current_iter)
+			temp2 = np.take(temp1,attacking_pos)
+			support_set = s.support_relations[:j]
+			supporting_pos = np.where(support_set)
+			temp3 = np.take(temp1,supporting_pos)
+			current_iter[j] = tau*(1 + (np.prod(temp2)*np.prod(temp3)) - np.prod(temp3))
 
-			save_iterations[i,:] = current_iter
-			diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
-			condition = (diff1 < 0.0000000001).prod()
-			diff2 = np.sum(np.absolute(diff1))
-			print("Iteration number:  ", i, " Difference is ", diff2)
+		save_iterations[i,:] = current_iter
+		diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
+		condition = (np.absolute(diff1) < 0.00000001).prod()
+		diff2 = np.sum(np.absolute(diff1))
 
-		if condition == 1:
-			print("Converged!")
-			print("Number of iterations required was: ", i)
-		else:
-			print("Ran out of iterations!")
-			print("Try running until convergence, or increasing the number of iterations.")
-	  #Implements RunUntilConvergence
+	if condition == 1:
+		s.time = time.time() - t0
+		s.iterations_needed = i
+		print("Converged!")
+		s.results = str(1)
 	else:
-		save_iterations = np.zeros(shape = (1,len(s.initial_values)))
-		save_iterations [0,:] = s.initial_values
-		i = 0
-		condition = 0
-		while (condition == 0 and i < 300):	#300 is maximum number of iterations
-			current_iter = copy.deepcopy(save_iterations[i,:])
-			i +=  1
-			for j in range(len(s.initial_values)):        
-				tau = s.votes_eval(j)
-				attacking_set = s.attack_relations[:,j]
-				attacking_pos = np.where(attacking_set)
-				temp1 = np.subtract(np.ones(s.var),current_iter)
-				temp2 = np.take(temp1,attacking_pos)
-				support_set = s.support_relations[:j]
-				supporting_pos = np.where(support_set)
-				temp3 = np.take(temp1,supporting_pos)
-				current_iter[j] = tau*(1 + (np.prod(temp2)*np.prod(temp3)) - np.prod(temp3))
-			save_iterations = np.concatenate((save_iterations,np.zeros((1,len(s.initial_values)))), axis=0)
-			save_iterations[i,:] = current_iter
-			diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
-			condition = (diff1 < 0.0000000001).prod()
-			diff2 = np.sum(np.absolute(diff1))
-			print("Iteration number:  ", i, " Difference is ", diff2)
-
-		if condition == 1:
-			print("Converged!")
-			print("Number of iterations required was: ", i)
-		else:
-			print("Ran out of iterations!")
-			print("Try increasing the number of iterations.")
+		print("Ran out of iterations!")
+		s.time = 0
+		s.iterations_needed = 0
+		s.results = str(0)
 
 def doEbsaf(s, iters=0):
-	#Implements RunTillIterations
-	if iters != 0:
-		save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
-		save_iterations [0,:] = s.initial_values
-		i = 0
-		condition = 0
-		while (condition == 0 and i < iters+1):
-			current_iter = copy.deepcopy(save_iterations[i,:])
-			i +=  1
-			for j in range(len(s.initial_values)):        
-				tau = s.votes_eval(j)
-				attacking_set = s.attack_relations[:,j]
-				attacking_pos = np.transpose(np.nonzero(attacking_set)).tolist()
-				attacking_pos = [item for sublist in attacking_pos for item in sublist]
-				temp1 = []
-				for attacker in attacking_pos:
-					if (attacker, j) in s.votes_relations:
-						tau_relations = s.votes_relations_eval(attacker, j)
-						temp1.append(1 - (tau_relations*current_iter[attacker]))
-				supporting_set = s.support_relations[:,j]
-				supporting_pos = np.transpose(np.nonzero(supporting_set)).tolist()
-				supporting_pos = [item for sublist in supporting_pos for item in sublist]
-				temp2 = []
-				for supporter in supporting_pos:
-					if (supporter, j) in s.votes_support_relations:
-						tau_relations = s.votes_relations_eval(supporter, j)
-						temp2.append(1 - (tau_relations*current_iter[supporter]))
-				current_iter[j] = tau*(1+(np.prod(temp1)*np.prod(temp2)-np.prod(temp2)))
-			save_iterations[i,:] = current_iter
-			diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
-			condition = (diff1 < 0.0000000001).prod()
-			diff2 = np.sum(np.absolute(diff1))
-			print("Iteration number:  ", i, " Difference is ", diff2)
+	if iters == 0:
+		iters = 10000
+	t0 = time.time()
+	save_iterations = np.zeros(shape = (iters+1,len(s.initial_values)))
+	save_iterations [0,:] = s.initial_values
+	i = 0
+	condition = 0
+	while (condition == 0 and i < iters+1):
+		current_iter = copy.deepcopy(save_iterations[i,:])
+		i +=  1
+		for j in range(len(s.initial_values)):        
+			tau = s.votes_eval(j)
+			attacking_set = s.attack_relations[:,j]
+			attacking_pos = np.transpose(np.nonzero(attacking_set)).tolist()
+			attacking_pos = [item for sublist in attacking_pos for item in sublist]
+			temp1 = []
+			for attacker in attacking_pos:
+				if (attacker, j) in s.votes_relations:
+					tau_relations = s.votes_relations_eval(attacker, j)
+					temp1.append(1 - (tau_relations*current_iter[attacker]))
+			supporting_set = s.support_relations[:,j]
+			supporting_pos = np.transpose(np.nonzero(supporting_set)).tolist()
+			supporting_pos = [item for sublist in supporting_pos for item in sublist]
+			temp2 = []
+			for supporter in supporting_pos:
+				if (supporter, j) in s.votes_support_relations:
+					tau_relations = s.votes_support_relations_eval(supporter, j)
+					temp2.append(1 - (tau_relations*current_iter[supporter]))
+			current_iter[j] = tau*(1+(np.prod(temp1)*np.prod(temp2)-np.prod(temp2)))
+		save_iterations[i,:] = current_iter
+		diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
+		condition = (np.absolute(diff1) < 0.0000000001).prod()
+		diff2 = np.sum(np.absolute(diff1))
 
-		if condition == 1:
-			print("Converged!")
-			print("Number of iterations required was: ", i)
-		else:
-			print("Ran out of iterations!")
-			print("Try running until convergence, or increasing the number of iterations.")
-	  #Implements RunUntilConvergence
+	if condition == 1:
+		s.time = time.time() - t0
+		s.iterations_needed = i
+		print("Converged!")
+		s.results = str(1)
 	else:
-		save_iterations = np.zeros(shape = (1,len(s.initial_values)))
-		save_iterations [0,:] = s.initial_values
-		i = 0
-		condition = 0
-		while (condition == 0 and i < 300):	#300 is maximum number of iterations
-			current_iter = copy.deepcopy(save_iterations[i,:])
-			i +=  1
-			for j in range(len(s.initial_values)):        
-				tau = s.votes_eval(j)
-				attacking_set = s.attack_relations[:,j]
-				attacking_pos = np.transpose(np.nonzero(attacking_set)).tolist()
-				attacking_pos = [item for sublist in attacking_pos for item in sublist]
-				temp1 = []
-				for attacker in attacking_pos:
-					if (attacker, j) in s.votes_relations:
-						tau_relations = s.votes_relations_eval(attacker, j)
-						temp1.append(1 - (tau_relations*current_iter[attacker]))
-				supporting_set = s.support_relations[:,j]
-				supporting_pos = np.transpose(np.nonzero(supporting_set)).tolist()
-				supporting_pos = [item for sublist in supporting_pos for item in sublist]
-				temp2 = []
-				for supporter in supporting_pos:
-					if (supporter, j) in s.votes_support_relations:
-						tau_relations = s.votes_relations_eval(supporter, j)
-						temp2.append(1 - (tau_relations*current_iter[supporter]))
-				current_iter[j] = tau*(1+(np.prod(temp1)*np.prod(temp2)-np.prod(temp2)))
-			save_iterations = np.concatenate((save_iterations,np.zeros((1,len(s.initial_values)))), axis=0)
-			save_iterations[i,:] = current_iter
-			diff1 = np.subtract(save_iterations[i-1,:],save_iterations[i,:])
-			condition = (diff1 < 0.0000000001).prod()
-			diff2 = np.sum(np.absolute(diff1))
-			print("Iteration number:  ", i, " Difference is ", diff2)
+		print("Ran out of iterations!")
+		s.time = 0
+		s.iterations_needed = 0
+		s.results = str(0)
 
-		if condition == 1:
-			print("Converged!")
-			print("Number of iterations required was: ", i)
-		else:
-			print("Ran out of iterations!")
-			print("Try increasing the number of iterations.")
+
+
 
