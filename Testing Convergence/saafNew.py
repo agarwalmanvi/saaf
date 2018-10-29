@@ -75,6 +75,7 @@ class Structure:
 		n_edges = math.floor(2 * scipy.special.comb(self.var, 2) * self.density)
 		# keeps track of which nodes still have space for more edges
 		available_nodes = list(range(self.var))
+		# the attacking relations are added here
 		for i in range(n_edges):
 			u = np.random.choice(available_nodes)
 			# ensures that u does not end up in free_nodes
@@ -90,9 +91,11 @@ class Structure:
 			else:
 				v = np.random.choice(free_nodes[0])
 				self.attack_relations[u][v] = 1
+			# no self attacks
 			self.attack_relations[u][u] = 0	
 		n_edges = math.floor(2 * scipy.special.comb(self.var, 2) * self.support_density)
 		available_nodes = list(range(self.var))
+		# for support relations the same thing is done
 		for i in range(n_edges):
 			u = np.random.choice(available_nodes)
 			self.support_relations[u][u] = 1
@@ -103,6 +106,7 @@ class Structure:
 				i -= 1
 			else:
 				v = np.random.choice(free_nodes[0])
+				# checks so that there aren't both support and attack relations between two arguments 
 				if self.attack_relations[u][v] == 0:
 					self.support_relations[u][v] = 1
 			self.support_relations[u][u] = 0	
@@ -177,12 +181,14 @@ def doEsaf(s, iters=10000):
 	while (condition == 0 and i < iters+1):
 		current_iter = copy.deepcopy(save_iterations[i,:])
 		i +=  1
-		for j in range(len(s.initial_values)):        
+		for j in range(len(s.initial_values)):    
+			# the iterative rule    
 			tau = s.votes_eval(j)
 			attacking_set = s.attack_relations[:,j]
 			attacking_pos = np.transpose(np.nonzero(attacking_set)).tolist()
 			attacking_pos = [item for sublist in attacking_pos for item in sublist]
 			temp1 = []
+			# the votes of the attack relations are included for all the attackers 
 			for attacker in attacking_pos:
 				if (attacker, j) in s.votes_relations:
 					tau_relations = s.votes_relations_eval(attacker, j)
@@ -213,12 +219,14 @@ def doBsaf(s, iters=10000):
 	while (condition == 0 and i < iters+1):
 		current_iter = copy.deepcopy(save_iterations[i,:])
 		i +=  1
-		for j in range(len(s.initial_values)):        
+		for j in range(len(s.initial_values)):    
+			# the iterative rule    
 			tau = s.votes_eval(j)
 			attacking_set = s.attack_relations[:,j]
 			attacking_pos = np.where(attacking_set)
 			temp1 = np.subtract(np.ones(s.var),current_iter)
 			temp2 = np.take(temp1,attacking_pos)
+			# the support relations are considered here 
 			support_set = s.support_relations[:j]
 			supporting_pos = np.where(support_set)
 			temp3 = np.take(temp1,supporting_pos)
@@ -251,18 +259,22 @@ def doEbsaf(s, iters=10000):
 		i +=  1
 		for j in range(len(s.initial_values)):        
 			tau = s.votes_eval(j)
+			# the attacking arguments
 			attacking_set = s.attack_relations[:,j]
 			attacking_pos = np.transpose(np.nonzero(attacking_set)).tolist()
 			attacking_pos = [item for sublist in attacking_pos for item in sublist]
 			temp1 = []
+			# votes for the attacking arguments
 			for attacker in attacking_pos:
 				if (attacker, j) in s.votes_relations:
 					tau_relations = s.votes_relations_eval(attacker, j)
 					temp1.append(1 - (tau_relations*current_iter[attacker]))
+			# the supporting arguments
 			supporting_set = s.support_relations[:,j]
 			supporting_pos = np.transpose(np.nonzero(supporting_set)).tolist()
 			supporting_pos = [item for sublist in supporting_pos for item in sublist]
 			temp2 = []
+			# votes on the support relations
 			for supporter in supporting_pos:
 				if (supporter, j) in s.votes_support_relations:
 					tau_relations = s.votes_support_relations_eval(supporter, j)
@@ -283,8 +295,3 @@ def doEbsaf(s, iters=10000):
 		s.time = 0
 		s.iterations_needed = 0
 		s.results = str(0)
-
-
-
-
-

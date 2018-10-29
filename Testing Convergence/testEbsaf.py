@@ -1,6 +1,8 @@
 from saafNew import *
 import csv
 
+# tests runtime and convergence of BSAF and EBSAF
+
 data = ['args','dA','dS','res','time','iters']
 with open("output_bsaf.csv", "a") as fp:
 	wr = csv.writer(fp, dialect='excel')
